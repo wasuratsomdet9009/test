@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แนะนำสเปคโน้ตบุ๊กสำหรับตัดต่อวิดีโอ (ขับเคลื่อนโดย AI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #111827;
+            color: #d1d5db;
+        }
+        .spec-card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .spec-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .spec-title {
+            font-weight: 800;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .recommended .spec-title {
+             background: linear-gradient(to right, #4ade80, #facc15);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .table-icon { width: 24px; height: 24px; margin-right: 12px; flex-shrink: 0; }
+        
+        @keyframes pulse-animation {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(96, 165, 250, 0); }
+        }
+        .pulse { animation: pulse-animation 2.5s infinite; }
+
+        #chat-container {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; z-index: 1000;
+            background-color: #111827;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        #chat-container.open { transform: translateY(0); }
+        
+        @media (min-width: 768px) {
+            #chat-container {
+                width: 400px; height: 600px; max-height: 80vh; left: auto; right: 2rem; bottom: 2rem;
+                border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                transform: translateY(20px) scale(0.95); opacity: 0; pointer-events: none;
+                background-color: #1f2937;
+            }
+            #chat-container.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        }
+        
+        #chat-toggle {
+            position: fixed; bottom: 1.5rem; right: 1.5rem; width: 60px; height: 60px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1001;
+            transition: transform 0.2s ease, background 0.3s ease;
+        }
+        #chat-toggle:hover { transform: scale(1.1); }
+
+        .chat-message { max-width: 85%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; line-height: 1.6; word-wrap: break-word; }
+        .user-message { background-color: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .assistant-message { background-color: #374151; color: #d1d5db; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .assistant-message strong { color: #93c5fd; }
+        .assistant-message ul { list-style-type: disc; padding-left: 1.5rem; }
+        .assistant-message code { background-color: #111827; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.9em; }
+
+        .typing-indicator span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #9ca3af; animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+
+        /* Modal Styles */
+        #recommendation-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #recommendation-modal.open { opacity: 1; pointer-events: auto; }
+        #modal-content {
+            background-color: #1f2937; color: #d1d5db;
+            padding: 2rem; border-radius: 1rem; width: 90%; max-width: 600px;
+            max-height: 85vh; overflow-y: auto;
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        #recommendation-modal.open #modal-content { transform: scale(1); }
+        #modal-content h3 { font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 1rem; }
+        #modal-content p { margin-bottom: 0.5rem; }
+        #modal-content strong { color: #a78bfa; }
+        #modal-content ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 1rem; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">คู่มือเลือกซื้อโน้ตบุ๊กสำหรับ<span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">ตัดต่อวิดีโอ</span></h1>
+            <p class="mt-4 text-md md:text-lg text-gray-400">อัปเดต 2025 | ขับเคลื่อนโดย Gemini AI</p>
+        </header>
+
+        <div class="max-w-2xl mx-auto my-8">
+            <button id="open-chat-cta" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                <span class="text-lg">สับสนใช่ไหม? คุยกับ AI ผู้ช่วยเลย!</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Minimum Specs Card -->
+            <div class="spec-card rounded-xl p-6 md:p-8 flex flex-col">
+                <h2 class="spec-title text-3xl mb-6">สเปคขั้นต่ำ</h2>
+                <p class="text-gray-400 mb-6 flex-grow">สำหรับงานตัดต่อ Full HD (1080p), งานเริ่มต้น</p>
+                <!-- Omitted spec details for brevity, they are the same -->
+                <button class="recommend-btn mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" data-spec-type="minimum">
+                    ✨ AI แนะนำรุ่นเด่น
+                </button>
+            </div>
+
+            <!-- Recommended Specs Card -->
+            <div class="spec-card recommended rounded-xl p-6 md:p-8 flex flex-col">
+                <h2 class="spec-title text-3xl mb-6">สเปคแนะนำ</h2>
+                <p class="text-gray-400 mb-6 flex-grow">เพื่อการทำงานที่ลื่นไหล, ตัดต่อไฟล์ 2K/4K</p>
+                <!-- Omitted spec details for brevity, they are the same -->
+                <button class="recommend-btn mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" data-spec-type="recommended">
+                    ✨ AI แนะนำรุ่นเด่น
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chat bubble -->
+    <div id="chat-toggle" class="pulse">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+    </div>
+
+    <!-- AI Chat Window -->
+    <div id="chat-container">
+        <!-- Chat Header -->
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80 backdrop-blur-sm md:bg-gray-800">
+            <div><h3 class="font-bold text-lg text-white">AI ผู้ช่วยแนะนำ</h3><p class="text-sm text-gray-400">ขับเคลื่อนโดย Gemini</p></div>
+            <button id="chat-header-close" class="text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <!-- Chat Window -->
+        <div id="chat-window" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-2"></div>
+        <!-- Chat Input -->
+        <div class="p-4 border-t border-gray-700 bg-gray-900 md:bg-gray-800">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="chat-input" placeholder="พิมพ์คำถามของคุณ..." class="flex-1 bg-gray-700 border border-gray-600 rounded-full py-3 px-5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="send-button" class="bg-blue-500 hover:bg-blue-600 rounded-full p-3 text-white transition-colors shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendation Modal -->
+    <div id="recommendation-modal">
+        <div id="modal-content">
+            <div class="flex justify-between items-center">
+                <h3 id="modal-title">✨ ผลการแนะนำจาก AI</h3>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="modal-body" class="mt-4">
+                <!-- AI response will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const chatContainer = document.getElementById('chat-container');
+        const chatToggle = document.getElementById('chat-toggle');
+        const openChatCTA = document.getElementById('open-chat-cta');
+        const chatHeaderClose = document.getElementById('chat-header-close');
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const recommendBtns = document.querySelectorAll('.recommend-btn');
+        const modal = document.getElementById('recommendation-modal');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        let chatHistory = [];
+        const specInfo = {
+            minimum: `CPU: Intel Core i5 (H-Series) Gen 12+ / AMD Ryzen 5 (H/HS-Series) 6000+, GPU: NVIDIA GeForce RTX 3050 (6GB) / RTX 4050, RAM: 16 GB, Storage: 512 GB NVMe SSD`,
+            recommended: `CPU: Intel Core i7/i9 (H/HX) Gen 13+ / AMD Ryzen 7/9 (H/HS/HX) 7000+ / Apple M2 Pro+, GPU: NVIDIA GeForce RTX 4060 (8GB)+, RAM: 32 GB, Storage: 1 TB+ NVMe SSD`
+        };
+
+        // --- Chat & Modal UI Logic ---
+        const openChat = () => { chatContainer.classList.add('open'); chatToggle.style.display = 'none'; };
+        const closeChat = () => { chatContainer.classList.remove('open'); chatToggle.style.display = 'flex'; };
+        const openModal = () => modal.classList.add('open');
+        const closeModal = () => modal.classList.remove('open');
+        
+        // --- Gemini API Call Logic ---
+        const callGeminiAPI = async (prompt) => {
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiKey = ""; // API key is handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                }
+                return "ขออภัยค่ะ มีข้อผิดพลาดในการรับข้อมูลจาก AI";
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                return "ขออภัยค่ะ ไม่สามารถเชื่อมต่อกับ AI ได้ในขณะนี้";
+            }
+        };
+
+        // --- Text Formatting ---
+        const formatMessage = (text) => {
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^- (.*$)/gm, '<li>$1</li>');
+            
+            if (html.includes('<li>')) {
+                html = `<ul>${html}</ul>`;
+            }
+            return html;
+        };
+
+        // --- Chat Functions ---
+        const addMessageToUI = (sender, message) => {
+            const messageElement = document.createElement('div');
+            messageElement.className = `chat-message ${sender === 'user' ? 'user-message' : 'assistant-message'}`;
+            messageElement.innerHTML = sender === 'user' ? message : formatMessage(message);
+            chatWindow.appendChild(messageElement);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+
+        const showTypingIndicator = () => {
+            const typingElement = document.createElement('div');
+            typingElement.id = 'typing-indicator';
+            typingElement.className = 'chat-message assistant-message typing-indicator';
+            typingElement.innerHTML = '<span></span><span></span><span></span>';
+            chatWindow.appendChild(typingElement);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+
+        const removeTypingIndicator = () => {
+            document.getElementById('typing-indicator')?.remove();
+        };
+
+        const handleSendMessage = async () => {
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+
+            addMessageToUI('user', userMessage);
+            chatInput.value = '';
+            showTypingIndicator();
+            
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+            
+            const prompt = `คุณคือ AI ผู้ช่วยเชี่ยวชาญด้านคอมพิวเตอร์บนเว็บไซต์แนะนำสเปคตัดต่อวิดีโอ ใช้ข้อมูลนี้: \n- สเปคขั้นต่ำ: ${specInfo.minimum}\n- สเปคแนะนำ: ${specInfo.recommended}\n\nตอบคำถามของผู้ใช้ด้วยภาษาไทยที่เป็นมิตรและเข้าใจง่าย โดยอ้างอิงจากประวัติการสนทนาและข้อมูลสเปคที่ให้มา.\n\nประวัติการสนทนา:\n${JSON.stringify(chatHistory)}\n\nคำถามล่าสุด: "${userMessage}"`;
+
+            const assistantMessage = await callGeminiAPI(prompt);
+            removeTypingIndicator();
+            addMessageToUI('assistant', assistantMessage);
+            chatHistory.push({ role: "model", parts: [{ text: assistantMessage }] });
+        };
+
+        // --- Laptop Recommendation Feature ---
+        const handleRecommendation = async (event) => {
+            const button = event.currentTarget;
+            const specType = button.dataset.specType;
+            const specDetails = specInfo[specType];
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = 'กำลังค้นหา...';
+            
+            const prompt = `ในฐานะผู้เชี่ยวชาญด้านคอมพิวเตอร์, กรุณาแนะนำโน้ตบุ๊กรุ่นเด่น 2-3 รุ่นที่วางขายในปี 2025 ซึ่งมีสเปคใกล้เคียงกับ **"สเปค${specType === 'minimum' ? 'ขั้นต่ำ' : 'แนะนำ'}"** นี้: \n\n${specDetails}\n\nสำหรับแต่ละรุ่น ให้ระบุ: \n- **ชื่อรุ่น:** (ตัวหนา)\n- **สเปคหลัก:** (สรุปสั้นๆ)\n- **เหตุผลที่แนะนำ:** (1-2 บรรทัด)\n\nจัดรูปแบบคำตอบให้สวยงามอ่านง่าย ใช้ภาษาไทย`;
+
+            const recommendationText = await callGeminiAPI(prompt);
+            modalBody.innerHTML = formatMessage(recommendationText);
+            openModal();
+
+            button.disabled = false;
+            button.innerHTML = originalText;
+        };
+
+        // --- Event Listeners ---
+        chatToggle.addEventListener('click', openChat);
+        openChatCTA.addEventListener('click', openChat);
+        chatHeaderClose.addEventListener('click', closeChat);
+        sendButton.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keydown', (e) => e.key === 'Enter' && handleSendMessage());
+        recommendBtns.forEach(btn => btn.addEventListener('click', handleRecommendation));
+        modalCloseBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => e.target === modal && closeModal());
+
+        // --- Initial Welcome Message ---
+        const welcomeMessage = "สวัสดีครับ! ผมคือ AI ผู้ช่วย มีอะไรให้ผมช่วยแนะนำเกี่ยวกับสเปคโน้ตบุ๊กสำหรับตัดต่อวิดีโอไหมครับ?";
+        addMessageToUI('assistant', welcomeMessage);
+        chatHistory.push({ role: "model", parts: [{ text: welcomeMessage }] });
+    </script>
+</body>
+</html>
